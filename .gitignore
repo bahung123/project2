@@ -1,0 +1,23 @@
+# B? qua thu m?c môi tru?ng ?o
+env/
+venv/
+
+# B? qua thu m?c cache c?a Python
+__pycache__/
+*.pyc
+*.pyo
+
+# B? qua file database SQLite (n?u có)
+db.sqlite3
+
+# B? qua file h? th?ng macOS (n?u có)
+.DS_Store
+
+# B? qua thu m?c cài d?t VS Code (n?u có)
+.vscode/
+
+# B? qua file c?u hình môi tru?ng (ch?a API key)
+.env
+
+# B? qua checkpoint c?a Jupyter Notebook (n?u có)
+.ipynb_checkpoints/

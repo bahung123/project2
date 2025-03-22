@@ -1,0 +1,290 @@
+{% extends 'admin/base_admin.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-xxl py-5">
+    <div class="container">
+        <!-- Thông báo hệ thống -->
+        {% include 'include/messages.html'%}
+
+        <!-- Tiêu đề -->
+        <div class="text-center mb-5">
+            <h1 class="section-title text-primary">Room</h1>
+        </div>
+
+        <!-- Thanh tìm kiếm và chọn chi nhánh -->
+        {% if action == 'list' %}
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-6">
+                <form method="GET" action="{% url 'room_list' %}" class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Search rooms..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+            <div class="col-md-4 mt-3 mt-md-0">
+                <form method="GET" action="{% url 'room_list' %}">
+                    <label for="branch" class="form-label">Select Branch</label>
+                    <select name="branch" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Branches</option>
+                        {% for branch in branches %}
+                            <option value="{{ branch.id }}" {% if branch.id|stringformat:"s" == selected_branch_id|stringformat:"s" %}selected{% endif %}>
+                                {{ branch.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            <div class="col-md-2 text-end mt-3 mt-md-0">
+                <a href="{% url 'room_list' %}?action=add" class="btn btn-success w-100">Add Room</a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Nội dung chính -->
+        <div class="row g-4">
+            {% if action == 'view' %}
+            <!-- Chi tiết phòng -->
+            <div class="col-12">
+                <table class="table table-bordered">
+                    <tr>
+                        <th>Room Number</th>
+                        <td>{{ room.room_number }}</td>
+                    </tr>
+                    <tr>
+                        <th>Branch</th>
+                        <td>{{ room.branch.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Address</th>
+                        <td>{{ room.branch.address }}, {{ room.branch.city }}</td>
+                    </tr>
+                    <tr>
+                        <th>Room Type</th>
+                        <td>
+                            {% if room.room_type %}
+                                {{ room.room_type.name }}
+                            {% else %}
+                                No type assigned
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>{{ room.status }}</td>
+                    </tr>
+                    <tr>
+                        <th>Description</th>
+                        <td>{{ room.description|default:"No description available." }}</td>
+                    </tr>
+                    <tr>
+                        <th>Images</th>
+                        <td>
+                            <div class="row">
+                                {% for image in room.images %}
+                                    <div class="col-md-3 col-sm-4 mb-2">
+                                        <a href="{{ image.image_file.url }}" target="_blank">
+                                            <img src="{{ image.image_file.url }}" alt="Room Image" 
+                                                 class="img-fluid img-thumbnail" 
+                                                 style="cursor: pointer; border: 2px solid #ddd; border-radius: 5px;">
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <div class="text-center">
+                    <a href="{% url 'room_detail' room.id %}?action=edit" class="btn btn-warning btn-sm">Edit</a>
+                    <a href="{% url 'room_detail' room.id %}?action=delete" class="btn btn-danger btn-sm">Delete</a>
+                </div>
+            </div>            
+                {% elif action == 'edit' %}
+                <!-- Form chỉnh sửa phòng -->
+                <div class="col-12">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                
+                        <!-- Số phòng -->
+                        <div class="mb-3">
+                            <label for="room_number" class="form-label">Room Number</label>
+                            <input type="text" id="room_number" name="room_number" class="form-control" value="{{ room.room_number }}" required>
+                        </div>
+                
+                        <!-- Loại phòng -->
+                        <div class="mb-3">
+                            <label for="room_type" class="form-label">Room Type</label>
+                            <select id="room_type" name="room_type" class="form-select" required>
+                                {% for type in room_types %}
+                                    <option value="{{ type.id }}" {% if room.room_type.id == type.id %}selected{% endif %}>
+                                        {{ type.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                
+                        <!-- Tình trạng phòng -->
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select id="status" name="status" class="form-select" 
+                                {% if room.status != 'available' and room.status != 'maintenance' %}disabled{% endif %} required>
+                                <option value="available" {% if room.status == 'available' %}selected{% endif %}>available</option>
+                                <option value="maintenance" {% if room.status == 'maintenance' %}selected{% endif %}>maintenance</option>
+                                <option value="occupied" {% if room.status == 'occupied' %}selected{% endif %} disabled>occupied</option>
+                                <option value="booked" {% if room.status == 'booked' %}selected{% endif %} disabled>Booked</option>
+                            </select>
+                            {% if room.status != 'available' and room.status != 'maintenance' %}
+                                <small class="text-muted">Status cannot be changed while room is {{ room.status }}</small>
+                                <input type="hidden" name="status" value="{{ room.status }}">
+                            {% endif %}
+                        </div>
+                
+                        <!-- Mô tả -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" name="description" class="form-control">{{ room.description }}</textarea>
+                        </div>
+                
+                        <!-- Hình ảnh -->
+                        <div class="mb-3">
+                            <label for="images" class="form-label">Images</label>
+                            <input type="file" id="images" name="images" class="form-control" multiple>
+                            <div class="mt-2">
+                                <p>Current Images:</p>
+                                <div class="d-flex flex-wrap">
+                                    {% for image in room.images %}
+                                        <div class="me-2 mb-2">
+                                            <img src="{{ image.image_file.url }}" alt="Room Image" class="img-fluid rounded" style="max-width: 100px;">
+                                            <!-- Button xóa ảnh -->
+                                            <button type="submit" class="btn btn-danger btn-sm" name="delete_image_id" value="{{ image.id }}">Delete</button>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                
+                        <!-- Nút lưu thay đổi -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                        
+                    </form>
+                </div>
+            {% elif action == 'add' %}
+                <!-- Form thêm phòng -->
+                <div class="col-12">
+                    <h2 class="text-center mb-4">Add Room</h2>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="room_number" class="form-label">Room Number</label>
+                            <input type="text" id="room_number" name="room_number" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="room_type" class="form-label">Room Type</label>
+                            <select id="room_type" name="room_type" class="form-select">
+                                {% for type in room_types %}
+                                    <option value="{{ type.id }}">{{ type.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="branch" class="form-label">Branch</label>
+                            <select id="branch" name="branch" class="form-select" required>
+                                {% for branch in branches %}
+                                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" name="description" class="form-control"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="images" class="form-label">Upload Images</label>
+                            <input type="file" id="images" name="images" class="form-control" multiple>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">Add Room</button>
+                        </div>
+                    </form>
+                </div>
+
+            {% elif action == 'delete' %}
+                <!-- Xác nhận xóa phòng -->
+                <div class="col-12">
+                    <h2 class="text-center mb-4">Delete Room: {{ room.name }}</h2>
+                    <p class="text-center">Are you sure you want to delete this room?</p>
+                    <form method="POST" class="text-center">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+
+            {% else %}
+                <!-- Room List Grid -->
+                <div class="row g-4">
+                    {% for room in page_obj %}
+                    <div class="col-lg-4 col-md-6">
+                        <div class="card h-100">
+                            <!-- Room Images -->
+                            <div id="carousel{{ room.id }}" class="carousel slide" data-bs-ride="carousel">
+                                <div class="carousel-inner">
+                                    {% for image in room.images %}
+                                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                        <img src="{{ image.image_file.url }}" class="d-block w-100" alt="Room Image" style="height: 200px; object-fit: cover;">
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if room.images|length > 1 %}
+                                <button class="carousel-control-prev" type="button" data-bs-target="#carousel{{ room.id }}" data-bs-slide="prev">
+                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Previous</span>
+                                </button>
+                                <button class="carousel-control-next" type="button" data-bs-target="#carousel{{ room.id }}" data-bs-slide="next">
+                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <span class="visually-hidden">Next</span>
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            <div class="card-body">
+                                <!-- Room Status Badge -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">Room {{ room.room_number }}</h5>
+                                    <span class="badge {% if room.status == 'available' %}bg-success
+                                                     {% elif room.status == 'occupied' %}bg-danger
+                                                     {% elif room.status == 'booked' %}bg-warning
+                                                     {% elif room.status == 'maintenance' %}bg-secondary
+                                                     {% else %}bg-info{% endif %}">
+                                        {{ room.status|title }}
+                                    </span>
+                                </div>
+
+                                <!-- Room Details -->
+                                <p class="card-text">
+                                    <small class="text-muted">Type: {{ room.room_type.name }}</small><br>
+                                    <small class="text-muted">Branch: {{ room.branch.name }}</small><br>
+                                    {{ room.description|truncatewords:20 }}
+                                </p>
+
+                                <!-- Action Buttons -->
+                                <div class="d-flex justify-content-between mt-3">
+                                <a href="{% url 'room_detail' room.id %}?action=view" class="btn btn-primary btn-sm">View</a>
+                                <a href="{% url 'room_detail' room.id %}?action=edit&page={{ page_obj.number }}&branch={{ selected_branch_id }}&search={{ search_query }}" class="btn btn-warning btn-sm">Edit</a>
+                                <a href="{% url 'room_detail' room.id %}?action=delete" class="btn btn-danger btn-sm">Delete</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                {% include 'include/pagination.html' %}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
